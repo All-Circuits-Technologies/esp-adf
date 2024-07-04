@@ -25,34 +25,38 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/timers.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
-#include "es8388.h"
+#include "audio_hal.h"
 #include "board.h"
+#include "driver/gpio.h"
+#include "es8388.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+#include "freertos/timers.h"
 
+#if defined(CONFIG_ESP_LYRAT_V4_3_BOARD) || defined(USE_HEADPHONE_DETECT)
+#    include "headphone_detect.h"
 
-#ifdef CONFIG_ESP_LYRAT_V4_3_BOARD
-
-#define HP_DELAY_TIME_MS       1000
+#    define HP_DELAY_TIME_MS 1000
 
 static const char *TAG = "HEADPHONE";
 static xTimerHandle timer_headphone;
 
 static void hp_timer_cb(TimerHandle_t xTimer)
 {
-    int num = (int)pvTimerGetTimerID(xTimer);
-    int res = gpio_get_level(num);
-    es8388_pa_power(res);
+    es8388_set_line(headphone_detect_get_line());
 }
 
 static int hp_timer_init(int num)
 {
-    timer_headphone = xTimerCreate("hp_timer0", HP_DELAY_TIME_MS / portTICK_RATE_MS, pdFALSE, (void *) num, hp_timer_cb);
-    if (timer_headphone == NULL) {
+    timer_headphone = xTimerCreate("hp_timer0",
+                                   HP_DELAY_TIME_MS / portTICK_RATE_MS,
+                                   pdFALSE,
+                                   (void *)num,
+                                   hp_timer_cb);
+    if (timer_headphone == NULL)
+    {
         ESP_LOGE(TAG, "hp_timer create err");
         return ESP_FAIL;
     }
@@ -63,7 +67,8 @@ static void IRAM_ATTR headphone_gpio_intr_handler(void *arg)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xTimerResetFromISR(timer_headphone, &xHigherPriorityTaskWoken);
-    if ( xHigherPriorityTaskWoken != pdFALSE ) {
+    if (xHigherPriorityTaskWoken != pdFALSE)
+    {
         portYIELD_FROM_ISR();
     }
 }
@@ -80,16 +85,24 @@ int headphone_status_get()
     return gpio_get_level(get_headphone_detect_gpio());
 }
 
+audio_hal_dac_output_t headphone_detect_get_line()
+{
+    // bool is_not_insert = headphone_status_get();
+    // return is_not_insert ? AUDIO_HAL_DAC_OUTPUT_LINE1
+    //                      : AUDIO_HAL_DAC_OUTPUT_LINE2;
+    return AUDIO_HAL_DAC_OUTPUT_ALL;
+}
+
 void headphone_detect_init(int num)
 {
     hp_timer_init(num);
-    gpio_config_t  io_conf;
+    gpio_config_t io_conf;
     memset(&io_conf, 0, sizeof(io_conf));
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
-    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.intr_type    = GPIO_INTR_ANYEDGE;
+    io_conf.mode         = GPIO_MODE_INPUT;
     io_conf.pin_bit_mask = BIT64(num);
     io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 1;
+    io_conf.pull_up_en   = 1;
     gpio_config(&io_conf);
 
     gpio_install_isr_service(0);

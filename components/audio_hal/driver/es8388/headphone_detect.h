@@ -26,36 +26,45 @@
 #define _AUDIO_HEADPHONE_DETECT_H_
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/**
+    /**
  * @brief Get headphone insertion status
  *
  * @param None.
  *
  * @return  int, 0:headphone inserted, 1:headphone not inserted.
  */
-int headphone_status_get();
+    int headphone_status_get();
 
-/**
+    /**
+ * @brief Get headphone detect output.
+ *
+ * @param None.
+ *
+ * @return  audio_hal_dac_output_t, output type.
+ */
+    audio_hal_dac_output_t headphone_detect_get_line();
+
+    /**
  * @brief Initialize headphone detect gpio.
  *
  * @param None.
  *
  * @return None.
  */
-void headphone_detect_init(int num);
+    void headphone_detect_init(int num);
 
-/**
+    /**
  * @brief Delete headphone detect timer.
  *
  * @param None.
  *
  * @return None.
  */
-void headphone_detect_deinit();
-
+    void headphone_detect_deinit();
 
 #ifdef __cplusplus
 }
