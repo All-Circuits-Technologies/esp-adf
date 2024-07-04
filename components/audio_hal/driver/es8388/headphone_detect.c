@@ -87,10 +87,9 @@ int headphone_status_get()
 
 audio_hal_dac_output_t headphone_detect_get_line()
 {
-    // bool is_not_insert = headphone_status_get();
-    // return is_not_insert ? AUDIO_HAL_DAC_OUTPUT_LINE1
-    //                      : AUDIO_HAL_DAC_OUTPUT_LINE2;
-    return AUDIO_HAL_DAC_OUTPUT_ALL;
+    bool is_not_insert = headphone_status_get();
+    return is_not_insert ? AUDIO_HAL_DAC_OUTPUT_LINE1
+                         : AUDIO_HAL_DAC_OUTPUT_LINE2;
 }
 
 void headphone_detect_init(int num)

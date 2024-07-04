@@ -30,7 +30,7 @@ extern "C"
 {
 #endif
 
-    // #define USE_HEADPHONE_DETECT
+#define USE_HEADPHONE_DETECT
 
     typedef enum
     {

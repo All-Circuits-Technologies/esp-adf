@@ -379,38 +379,17 @@ esp_err_t es8388_init(audio_hal_codec_config_t *cfg)
         0x80); // set internal ADC and DAC use the same LRCK clock, ADC LRCK as internal LRCK
     res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL23, 0x00); // vroi=0
 
-    // #if defined(CONFIG_ESP_LYRAT_V4_3_BOARD) || defined(USE_HEADPHONE_DETECT)
-    //     res |= es8388_set_line(headphone_detect_get_line());
-    // #else
-    //     res |= es8388_set_line(AUDIO_HAL_DAC_OUTPUT_ALL);
-    // #endif
-
-    res |= es_write_reg(
-        ES8388_ADDR,
-        ES8388_DACCONTROL24,
-        0x00); // Set L1 R1 L2 R2 volume. 0x00: -30dB, 0x1E: 0dB, 0x21: 3dB
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x00);
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x1E);
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1E);
+#if defined(CONFIG_ESP_LYRAT_V4_3_BOARD) || defined(USE_HEADPHONE_DETECT)
+    res |= es8388_set_line(headphone_detect_get_line());
+#else
+    res |= es8388_set_line(AUDIO_HAL_DAC_OUTPUT_LINE2);
+#endif
 
     // res |= es8388_set_adc_dac_volume(ES_MODULE_DAC, 0, 0);       // 0db
     int tmp = 0;
-    // if (AUDIO_HAL_DAC_OUTPUT_LINE2 == cfg->dac_output)
-    // {
-    //     tmp = DAC_OUTPUT_LOUT1 | DAC_OUTPUT_ROUT1;
-    // }
-    // else if (AUDIO_HAL_DAC_OUTPUT_LINE1 == cfg->dac_output)
-    // {
-    //     tmp = DAC_OUTPUT_LOUT2 | DAC_OUTPUT_ROUT2;
-    // }
-    // else
-    {
-        tmp = DAC_OUTPUT_LOUT1 | DAC_OUTPUT_LOUT2 | DAC_OUTPUT_ROUT1 |
-              DAC_OUTPUT_ROUT2;
-    }
     res |= es_write_reg(ES8388_ADDR,
                         ES8388_DACPOWER,
-                        tmp); //0x3c Enable DAC and Enable Lout/Rout/1/2
+                        0x3c); //0x3c Enable DAC and Enable Lout/Rout/1/2
     /* adc */
     res |= es_write_reg(ES8388_ADDR, ES8388_ADCPOWER, 0xFF);
     res |= es_write_reg(ES8388_ADDR,
@@ -742,6 +721,7 @@ esp_err_t es8388_pa_power(bool enable)
  */
 esp_err_t es8388_set_line(audio_hal_dac_output_t line)
 {
+    ESP_LOGI(ES_TAG, "es8388_set_line:%d", line);
     esp_err_t res = ESP_OK;
     if (line == AUDIO_HAL_DAC_OUTPUT_ALL)
     {
@@ -749,20 +729,23 @@ esp_err_t es8388_set_line(audio_hal_dac_output_t line)
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x1e);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x1e);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1e);
+        es8388_pa_power(true);
     }
     else if (line == AUDIO_HAL_DAC_OUTPUT_LINE1)
     {
-        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, 0x21);
-        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x21);
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, 0x1e);
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x1e);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x0);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x0);
+        es8388_pa_power(true);
     }
     else if (line == AUDIO_HAL_DAC_OUTPUT_LINE2)
     {
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, 0x0);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x0);
-        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x21);
-        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x21);
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x1e);
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1e);
+        es8388_pa_power(false);
     }
     return res;
 }
