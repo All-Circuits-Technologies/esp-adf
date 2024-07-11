@@ -729,14 +729,18 @@ esp_err_t es8388_set_line(audio_hal_dac_output_t line)
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x1e);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x1e);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1e);
+        // Disable stereo
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL7, 0x20);
         es8388_pa_power(true);
     }
     else if (line == AUDIO_HAL_DAC_OUTPUT_LINE1)
     {
-        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, 0x1e);
-        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x1e);
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, 0x20);
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x0);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x0);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x0);
+        // Disable stereo
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL7, 0x20);
         es8388_pa_power(true);
     }
     else if (line == AUDIO_HAL_DAC_OUTPUT_LINE2)
@@ -745,6 +749,8 @@ esp_err_t es8388_set_line(audio_hal_dac_output_t line)
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x0);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0x1e);
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1e);
+        // Enable stereo for the jack
+        res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL7, 0x00);
         es8388_pa_power(false);
     }
     return res;
