@@ -39,14 +39,15 @@
 static const char *ES_TAG = "ES8388_DRIVER";
 static i2c_bus_handle_t i2c_handle;
 static codec_dac_volume_config_t *dac_vol_handle;
-static int current_volume = 0;
+static int current_volume                  = 0;
+static audio_hal_dac_output_t current_line = AUDIO_HAL_DAC_OUTPUT_LINE1;
 
 #define ES8388_DAC_VOL_CFG_DEFAULT()                                           \
     {                                                                          \
         .max_dac_volume = 0, .min_dac_volume = -96,                            \
         .board_pa_gain = BOARD_PA_GAIN, .volume_accuracy = 0.5,                \
         .dac_vol_symbol = -1, .zero_volume_reg = 0, .reg_value = 0,            \
-        .user_volume = 0, .offset_conv_volume = NULL,                          \
+        .user_volume = -96, .offset_conv_volume = NULL,                        \
     }
 
 #define ES_ASSERT(a, format, b, ...)                                           \
@@ -436,7 +437,7 @@ esp_err_t es8388_init(audio_hal_codec_config_t *cfg)
     io_conf.pull_up_en   = 0;
     gpio_config(&io_conf);
     /* enable es8388 PA */
-    es8388_pa_power(true);
+    // es8388_pa_power(true);
 
     codec_dac_volume_config_t vol_cfg = ES8388_DAC_VOL_CFG_DEFAULT();
     dac_vol_handle                    = audio_codec_volume_init(&vol_cfg);
@@ -699,10 +700,12 @@ esp_err_t es8388_config_i2s(audio_hal_codec_mode_t mode,
     return res;
 }
 
-esp_err_t es8388_pa_power(bool enable)
+static bool desired_pa_state = false;
+
+esp_err_t es8388_pa_power_internal(bool enable)
 {
     esp_err_t res = ESP_OK;
-    if (enable)
+    if (enable && desired_pa_state)
     {
         res = gpio_set_level(get_pa_enable_gpio(), 1);
     }
@@ -711,6 +714,18 @@ esp_err_t es8388_pa_power(bool enable)
         res = gpio_set_level(get_pa_enable_gpio(), 0);
     }
     return res;
+}
+
+esp_err_t es8388_pa_power(bool enable)
+{
+    desired_pa_state = enable;
+
+    if (current_line == AUDIO_HAL_DAC_OUTPUT_LINE2)
+    {
+        return ESP_OK;
+    }
+
+    return es8388_pa_power_internal(enable);
 }
 
 /**
@@ -731,7 +746,7 @@ esp_err_t es8388_set_line(audio_hal_dac_output_t line)
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1e);
         // Disable stereo
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL7, 0x20);
-        es8388_pa_power(true);
+        es8388_pa_power_internal(true);
     }
     else if (line == AUDIO_HAL_DAC_OUTPUT_LINE1)
     {
@@ -741,7 +756,7 @@ esp_err_t es8388_set_line(audio_hal_dac_output_t line)
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x0);
         // Disable stereo
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL7, 0x20);
-        es8388_pa_power(true);
+        es8388_pa_power_internal(true);
     }
     else if (line == AUDIO_HAL_DAC_OUTPUT_LINE2)
     {
@@ -751,7 +766,8 @@ esp_err_t es8388_set_line(audio_hal_dac_output_t line)
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0x1e);
         // Enable stereo for the jack
         res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL7, 0x00);
-        es8388_pa_power(false);
+        es8388_pa_power_internal(false);
     }
+    current_line = line;
     return res;
 }
