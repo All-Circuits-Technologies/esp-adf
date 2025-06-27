@@ -294,10 +294,6 @@ esp_err_t es8388_init(audio_hal_codec_config_t *cfg)
     res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL21, 0x80); // set internal ADC and DAC use the same LRCK clock, ADC LRCK as internal LRCK
     res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL23, 0x00); // vroi=0
 
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, 0x1E); // Set L1 R1 L2 R2 volume. 0x00: -30dB, 0x1E: 0dB, 0x21: 3dB
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, 0x1E);
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, 0);
-    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, 0);
     // res |= es8388_set_adc_dac_volume(ES_MODULE_DAC, 0, 0);       // 0db
     int tmp = 0;
     if (AUDIO_HAL_DAC_OUTPUT_LINE2 == cfg->dac_output) {
@@ -573,10 +569,48 @@ esp_err_t es8388_config_i2s(audio_hal_codec_mode_t mode, audio_hal_codec_i2s_ifa
 esp_err_t es8388_pa_power(bool enable)
 {
     esp_err_t res = ESP_OK;
+
+    uint8_t reg_gain_out1 = 0; // Set L1 R1 L2 R2 volume. 0x00: -30dB, 0x1E: 0dB, 0x21: 3dB
+    uint8_t reg_gain_out2 = 0; // Set L1 R1 L2 R2 volume. 0x00: -30dB, 0x1E: 0dB, 0x21: 3dB
+    uint8_t reg_dacpower = 0xC0; // power down
+    uint8_t reg_daccontrol6 = 0;
+
+    res |= es_read_reg(ES8388_DACCONTROL6, &reg_daccontrol6);
+    reg_daccontrol6 &= ~0x18; /* disable DACOUT invertion */
+
+#if 0 /* select output */
     if (enable) {
+        /* Active OUT2 (SPEAKER) */
+        reg_gain_out2 = 0x1E;
+        reg_dacpower = 0x0C; /* OUT2 */
+        reg_daccontrol6 |= (1<<5); /* invert Left */
         res = gpio_set_level(get_pa_enable_gpio(), 1);
     } else {
+        /* Active OUT1 (HeadPhone) */
+        reg_gain_out1 = 0x1E;
+        reg_dacpower = 0x30; /* OUT1 */
         res = gpio_set_level(get_pa_enable_gpio(), 0);
     }
+#else
+    /* BOTH but headphone left inveted */
+    reg_dacpower = 0x3C; /* OUT2 */
+    reg_gain_out1 = 0x1E;
+    reg_gain_out2 = 0x1E;
+    reg_daccontrol6 |= (1<<5); /* invert Left for SPEAKER */
+    res = gpio_set_level(get_pa_enable_gpio(), 1);
+#endif
+
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACPOWER, reg_dacpower);
+
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL6, reg_daccontrol6);
+
+    /* OUT1 => headphone */
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL24, reg_gain_out1);
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL25, reg_gain_out1);
+
+    /* OUT2 => HP */
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL26, reg_gain_out2);
+    res |= es_write_reg(ES8388_ADDR, ES8388_DACCONTROL27, reg_gain_out2);
+
     return res;
 }
